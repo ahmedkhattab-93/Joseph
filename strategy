@@ -1,0 +1,41 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © ahmed_khattab
+
+//@version=4
+strategy(title="Strategy", overlay=true)
+
+// Inputs
+startDate = input(title="Start Day", type=input.integer, defval=1, minval=1, maxval=31)
+startMonth = input(title="Start Month", type=input.integer, defval=1, minval=1, maxval=12)
+startYear = input(title="Start Year", type=input.integer, defval=2020, minval=1800, maxval=2100)
+endDate = input(title="End Day", type=input.integer, defval=1, minval=1, maxval=31)
+endMonth = input(title="End Month", type=input.integer, defval=1, minval=1, maxval=12)
+endYear = input(title="End Year", type=input.integer, defval=2021, minval=1800, maxval=2100)
+fast_length     = input ( 12, "MACD Fast Length",       input.integer, minval = 1, maxval = 500 )
+slow_length     = input ( 26, "MACD Slow Length",       input.integer, minval = 1, maxval = 500 )
+signal_length   = input ( 9,  "MACD Signal Smoothing",  input.integer, minval = 1, maxval = 500 )
+pvtLenL = input(10, minval=1, title="Swing Low Left Hand Side Bars")
+pvtLenR = input(10, minval=1, title="Swing Low Right Hand Side Bars")
+riskRewardRatio = input(1.5, minval=0, title="Risk Reward Ratio")
+risk = input(5, minval=0, title="Account Risk (%)")
+
+// Caluclations
+pvtLo = pivotlow(low, pvtLenL, pvtLenR)
+[macdLine, signalLine, histLine] = macd(close, fast_length, slow_length, signal_length)
+ema200 = ema(close, 200)
+inDateRange = (time >= timestamp(syminfo.timezone, startYear, startMonth, startDate, 0, 0)) and (time < timestamp(syminfo.timezone, endYear, endMonth, endDate, 0, 0))
+stopLoss = valuewhen(pvtLo, low[pvtLenR], 0) - atr(14)
+takeProfit = close + riskRewardRatio * (close - stopLoss)
+positionSize =  int((risk/100.0) * strategy.equity / (close - stopLoss))
+
+
+// Strategy
+longCondition = inDateRange and close > ema200 and crossover(histLine, 0) and strategy.position_size == 0 and close > stopLoss and macdLine < 0
+if (strategy.position_size == 0 and positionSize > 0)
+    strategy.entry("long", strategy.long, qty=positionSize, when= longCondition)
+    strategy.exit("long", "long", limit=takeProfit, stop=stopLoss, when=longCondition)
+
+// Plotting
+plot(ema200, color = color.red)
+plot(stopLoss, color=color.orange)
+plotshape(pvtLo, offset=-pvtLenR, style=shape.xcross, location=location.belowbar, color=color.blue, size=size.auto)

@@ -1,0 +1,4 @@
+//@version=4
+study("Horizontal Lines", overlay=true)
+hline(100, title='h1', color=color.purple, linestyle=hline.style_solid, linewidth=1)
+plot(close)

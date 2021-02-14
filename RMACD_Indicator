@@ -1,0 +1,86 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// @version = 4
+// @author  = The_Caretaker
+// Much respect to the original creator of this idea Mr Johhny Dough
+// Reverse MACD
+// Feel free to reuse or develop this script further, please drop me a note below if you find it useful.
+
+study ( "Reverse MACD Indicator" , "RMACD" , true, format.price , precision = 2 , resolution="" )
+
+//////////////////////////////////////////////////////////////////////////////
+// Inputs
+
+source_price    = input ( close, "Source",              input.source )
+
+fast_length     = input ( 12, "MACD Fast Length",       input.integer, minval = 1, maxval = 500 )
+slow_length     = input ( 26, "MACD Slow Length",       input.integer, minval = 1, maxval = 500 )
+signal_length   = input ( 9,  "MACD Signal Smoothing",  input.integer, minval = 1, maxval = 50 )
+
+bollingers      = input ( false,"RMACD Bollingers On",  input.bool )
+BBlength        = input ( 20,   "Bollinger Length",     input.integer, minval = 1, maxval = 50 )
+mult            = input ( 3.0, "Standard Deviation",    input.float,   minval = 0.001, maxval=50 )
+
+//////////////////////////////////////////////////////////////////////////////
+// Function Declarations
+
+alpha ( len ) => 2 / ( len + 1 )
+     
+     // returns exponential weighted multiplier for period len
+
+macd_eq ( price, fast_len, slow_len ) =>
+     (( alpha ( fast_len )) * ema ( price, fast_len )[1] - ( alpha ( slow_len )) * ema ( price, slow_len )[1] ) / ( alpha ( fast_len ) - alpha ( slow_len ))
+     
+    // returns price where MACD is equal to previous bar MACD
+    // the user can infer from this that 
+    // closing above this price will cause an increase of the MACD compared to the prior MACD
+    // and closing below it will cause a decrease of the MACD compared to the prior MACD
+
+
+macd_level ( level, price, fast_len, slow_len ) => 
+     ( level + ( 1 - alpha ( slow_len )) * ema ( price, slow_len )[1] - ( 1 - alpha ( fast_len )) * ema ( price, fast_len )[1] ) / ( alpha ( fast_len ) - alpha ( slow_len )) 
+
+    // returns price where MACD is equal to level value
+    // e.g. macd_level ( 0, close, 12, 26 ) 
+    // would return the next closing price which would make MACD = 0
+
+//////////////////////////////////////////////////////////////////////////////
+// Calculations
+
+fast_ema            = ema ( source_price, fast_length ) 
+slow_ema            = ema ( source_price, slow_length ) 
+
+macd                = fast_ema - slow_ema
+
+macd_zero_line      = macd_level ( 0, source_price, fast_length, slow_length )
+
+reverse_macd        = macd_eq ( source_price, fast_length, slow_length )
+
+reverse_macd_signal = ema ( reverse_macd, signal_length )
+
+std_dev             = mult * stdev (source_price, BBlength)
+
+hi_rmacd_bb          = reverse_macd + std_dev
+lo_rmacd_bb          = reverse_macd - std_dev
+
+//////////////////////////////////////////////////////////////////////////////
+// Alerts
+alertcondition(crossover(close, macd_zero_line), title='Price Crossing Above MACD Zero Line', message='Price has crossed above MACD Zero Line!')
+alertcondition(crossunder(close, macd_zero_line), title='Price Crossing Below MACD Zero Line', message='Price has crossed below MACD Zero Line!')
+
+//////////////////////////////////////////////////////////////////////////////
+// Plots and Fills
+
+plot ( macd_zero_line,      "MACD Zero Line", color.white, linewidth = 1, style = plot.style_line, transp = 0 )
+
+plot ( reverse_macd,        "MACD (Eq) Line", color.blue, linewidth = 2, style = plot.style_line, transp = 0 )
+
+plot ( reverse_macd_signal, "MACD Signal Line", color.red, linewidth = 2, style = plot.style_line, transp = 0 )
+
+
+hi_bb_plot = plot ( bollingers ? hi_rmacd_bb : na, "Upper RMACD BB", color.gray, linewidth = 1, style = plot.style_line, transp = 50 )
+lo_bb_plot = plot ( bollingers ? lo_rmacd_bb : na, "Lower RMACD BB", color.gray, linewidth = 1, style = plot.style_line, transp = 50 )
+
+fill ( hi_bb_plot, lo_bb_plot, color.gray, 80 )
+
+//////////////////////////////////////////////////////////////////////////////
+// End

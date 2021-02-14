@@ -1,0 +1,18 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © ahmed_khattab
+
+//@version=4
+study(title="Study Alert", overlay=true)
+
+// Inputs
+fast_length     = input ( 12, "MACD Fast Length",       input.integer, minval = 1, maxval = 500 )
+slow_length     = input ( 26, "MACD Slow Length",       input.integer, minval = 1, maxval = 500 )
+signal_length   = input ( 9,  "MACD Signal Smoothing",  input.integer, minval = 1, maxval = 500 )
+
+// Caluclations
+[macdLine, signalLine, histLine] = macd(close, fast_length, slow_length, signal_length)
+ema200 = ema(close, 200)
+
+// Alert
+alertCondition = close > ema200 and crossover(histLine, 0) and macdLine < 0
+alertcondition(alertCondition, title='Strategy Alert', message='MACD crosses below zero line and Close Greater than 200EMA!')

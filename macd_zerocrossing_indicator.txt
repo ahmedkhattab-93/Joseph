@@ -1,0 +1,19 @@
+//@version=4
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0
+study ( "MACD Zero Corssing" , "MACD Zero Crossing", overlay=false)
+
+source_price    = input ( close, "Source",              input.source )
+fast_length     = input ( 12, "MACD Fast Length",       input.integer, minval = 1, maxval = 500 )
+slow_length     = input ( 26, "MACD Slow Length",       input.integer, minval = 1, maxval = 500 )
+signal_length   = input ( 9,  "MACD Signal Smoothing",  input.integer, minval = 1, maxval = 500 )
+
+[macdLine, signalLine, histLine] = macd(close, fast_length, slow_length, signal_length)
+plot(macdLine, color=color.blue)
+plot(signalLine, color=color.orange)
+plot(histLine, color=histLine >= 0 ? color.green : color.red, style=plot.style_histogram)
+
+c1 = crossover(histLine, 0)
+c2 = crossunder(histLine, 0)
+
+alertcondition(c1, title='MACD Crosses Above Zero', message='MACD has crossed above zero!')
+alertcondition(c2, title='MACD Crossed Below Zero', message='MACD has crossed below zero!')
